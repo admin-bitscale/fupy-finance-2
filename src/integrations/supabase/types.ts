@@ -17,9 +17,13 @@ export type Database = {
       accounts: {
         Row: {
           balance: number
+          bank: string | null
+          account_number: string | null
+          color: string
           created_at: string
           currency: string
           id: string
+          is_active: boolean
           name: string
           type: string
           updated_at: string
@@ -27,9 +31,13 @@ export type Database = {
         }
         Insert: {
           balance?: number
+          bank?: string | null
+          account_number?: string | null
+          color?: string
           created_at?: string
           currency?: string
           id?: string
+          is_active?: boolean
           name: string
           type: string
           updated_at?: string
@@ -37,9 +45,13 @@ export type Database = {
         }
         Update: {
           balance?: number
+          bank?: string | null
+          account_number?: string | null
+          color?: string
           created_at?: string
           currency?: string
           id?: string
+          is_active?: boolean
           name?: string
           type?: string
           updated_at?: string
@@ -146,6 +158,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          priority: string
           status: string
           target_amount: number
           target_date: string | null
@@ -159,6 +172,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          priority?: string
           status?: string
           target_amount: number
           target_date?: string | null
@@ -172,54 +186,10 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          priority?: string
           status?: string
           target_amount?: number
           target_date?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      investments: {
-        Row: {
-          created_at: string
-          current_price: number | null
-          id: string
-          name: string
-          notes: string | null
-          purchase_date: string | null
-          purchase_price: number | null
-          quantity: number | null
-          symbol: string | null
-          type: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          current_price?: number | null
-          id?: string
-          name: string
-          notes?: string | null
-          purchase_date?: string | null
-          purchase_price?: number | null
-          quantity?: number | null
-          symbol?: string | null
-          type: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          current_price?: number | null
-          id?: string
-          name?: string
-          notes?: string | null
-          purchase_date?: string | null
-          purchase_price?: number | null
-          quantity?: number | null
-          symbol?: string | null
-          type?: string
           updated_at?: string
           user_id?: string
         }
@@ -235,6 +205,7 @@ export type Database = {
           description: string
           id: string
           notes: string | null
+          status: string
           tags: string[] | null
           type: string
           updated_at: string
@@ -249,6 +220,7 @@ export type Database = {
           description: string
           id?: string
           notes?: string | null
+          status?: string
           tags?: string[] | null
           type: string
           updated_at?: string
@@ -263,6 +235,7 @@ export type Database = {
           description?: string
           id?: string
           notes?: string | null
+          status?: string
           tags?: string[] | null
           type?: string
           updated_at?: string
@@ -284,6 +257,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_profiles: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          bio: string | null
+          birth_date: string | null
+          company: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          profession: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          birth_date?: string | null
+          company?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          profession?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          birth_date?: string | null
+          company?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          profession?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          auto_backup: boolean
+          created_at: string
+          currency: string
+          id: string
+          language: string
+          notifications: Json
+          theme: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_backup?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          language?: string
+          notifications?: Json
+          theme?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_backup?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          language?: string
+          notifications?: Json
+          theme?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
