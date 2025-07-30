@@ -1,4 +1,3 @@
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,24 +25,41 @@ import {
 } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 import { SharedManagement } from "@/components/settings/shared-management"
+import { useUserSettings } from "@/hooks/useUserSettings"
+import React from "react"
 
 export default function Settings() {
   const { theme, setTheme } = useTheme()
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: false,
-    whatsapp: true,
-    transactions: true,
-    goals: true,
-    reports: false
+  const { settings, loading, updateSettings } = useUserSettings()
+  
+  const [localSettings, setLocalSettings] = useState({
+    currency: settings?.currency || "BRL",
+    language: settings?.language || "pt-BR",
+    notifications: settings?.notifications || {
+      email: true,
+      push: false,
+      whatsapp: true,
+      transactions: true,
+      goals: true,
+      reports: false
+    },
+    auto_backup: settings?.auto_backup || true
   })
+
+  // Update local settings when settings are loaded
+  React.useEffect(() => {
+    if (settings) {
+      setLocalSettings({
+        currency: settings.currency,
+        language: settings.language,
+        notifications: settings.notifications,
+        auto_backup: settings.auto_backup
+      })
+    }
+  }, [settings])
   
-  const [currency, setCurrency] = useState("BRL")
-  const [language, setLanguage] = useState("pt-BR")
-  const [autoBackup, setAutoBackup] = useState(true)
-  
-  const handleSaveSettings = () => {
-    console.log("Configurações salvas")
+  const handleSaveSettings = async () => {
+    await updateSettings(localSettings)
   }
 
   const handleExportData = () => {
@@ -56,6 +72,27 @@ export default function Settings() {
 
   const handleDeleteAccountData = () => {
     console.log("Excluir dados da conta")
+  }
+
+  const updateNotification = (key: string, value: boolean) => {
+    setLocalSettings(prev => ({
+      ...prev,
+      notifications: {
+        ...prev.notifications,
+        [key]: value
+      }
+    }))
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground mt-2">Carregando configurações...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -99,10 +136,8 @@ export default function Settings() {
                     </div>
                   </div>
                   <Switch
-                    checked={notifications.email}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, email: checked }))
-                    }
+                    checked={localSettings.notifications.email}
+                    onCheckedChange={(checked) => updateNotification('email', checked)}
                   />
                 </div>
 
@@ -115,10 +150,8 @@ export default function Settings() {
                     </div>
                   </div>
                   <Switch
-                    checked={notifications.push}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, push: checked }))
-                    }
+                    checked={localSettings.notifications.push}
+                    onCheckedChange={(checked) => updateNotification('push', checked)}
                   />
                 </div>
 
@@ -131,10 +164,8 @@ export default function Settings() {
                     </div>
                   </div>
                   <Switch
-                    checked={notifications.whatsapp}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, whatsapp: checked }))
-                    }
+                    checked={localSettings.notifications.whatsapp}
+                    onCheckedChange={(checked) => updateNotification('whatsapp', checked)}
                   />
                 </div>
               </div>
@@ -151,10 +182,8 @@ export default function Settings() {
                     <p className="text-sm text-muted-foreground">Alertas de novas transações</p>
                   </div>
                   <Switch
-                    checked={notifications.transactions}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, transactions: checked }))
-                    }
+                    checked={localSettings.notifications.transactions}
+                    onCheckedChange={(checked) => updateNotification('transactions', checked)}
                   />
                 </div>
 
@@ -164,10 +193,8 @@ export default function Settings() {
                     <p className="text-sm text-muted-foreground">Progresso e lembretes de metas</p>
                   </div>
                   <Switch
-                    checked={notifications.goals}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, goals: checked }))
-                    }
+                    checked={localSettings.notifications.goals}
+                    onCheckedChange={(checked) => updateNotification('goals', checked)}
                   />
                 </div>
 
@@ -177,10 +204,8 @@ export default function Settings() {
                     <p className="text-sm text-muted-foreground">Relatórios mensais automáticos</p>
                   </div>
                   <Switch
-                    checked={notifications.reports}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, reports: checked }))
-                    }
+                    checked={localSettings.notifications.reports}
+                    onCheckedChange={(checked) => updateNotification('reports', checked)}
                   />
                 </div>
               </div>
@@ -226,8 +251,10 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground">Backup diário dos seus dados</p>
                 </div>
                 <Switch
-                  checked={autoBackup}
-                  onCheckedChange={setAutoBackup}
+                  checked={localSettings.auto_backup}
+                  onCheckedChange={(checked) => 
+                    setLocalSettings(prev => ({ ...prev, auto_backup: checked }))
+                  }
                 />
               </div>
             </CardContent>
@@ -313,7 +340,10 @@ export default function Settings() {
               
               <div className="space-y-2">
                 <Label htmlFor="language">Idioma</Label>
-                <Select value={language} onValueChange={setLanguage}>
+                <Select 
+                  value={localSettings.language} 
+                  onValueChange={(value) => setLocalSettings(prev => ({ ...prev, language: value }))}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -327,7 +357,10 @@ export default function Settings() {
 
               <div className="space-y-2">
                 <Label htmlFor="currency">Moeda</Label>
-                <Select value={currency} onValueChange={setCurrency}>
+                <Select 
+                  value={localSettings.currency} 
+                  onValueChange={(value) => setLocalSettings(prev => ({ ...prev, currency: value }))}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
