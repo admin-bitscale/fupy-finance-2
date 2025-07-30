@@ -1,45 +1,35 @@
 
 import { StatsCard } from "./stats-card";
 import { TrendingUp, TrendingDown, DollarSign, Wallet } from "lucide-react";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useAccounts } from "@/hooks/useAccounts";
 
 interface SummaryCardsProps {
   selectedPeriod: string;
 }
 
 export function SummaryCards({ selectedPeriod }: SummaryCardsProps) {
-  // Mock data que deveria vir baseado no período selecionado
-  const getDataForPeriod = (period: string) => {
-    const baseData = {
-      "Hoje": {
-        previousBalance: 12500,
-        currentBalance: 12850,
-        income: 350,
-        expenses: 0
-      },
-      "7 dias atrás": {
-        previousBalance: 11800,
-        currentBalance: 12850,
-        income: 1450,
-        expenses: 400
-      },
-      "Este mês": {
-        previousBalance: 10200,
-        currentBalance: 12850,
-        income: 6750,
-        expenses: 4100
-      },
-      "Este ano": {
-        previousBalance: 8500,
-        currentBalance: 12850,
-        income: 45200,
-        expenses: 40850
-      }
-    };
-
-    return baseData[period as keyof typeof baseData] || baseData["Este mês"];
+  const { getTransactionSummary } = useTransactions();
+  const { getAccountsSummary } = useAccounts();
+  
+  const transactionSummary = getTransactionSummary(selectedPeriod);
+  const accountsSummary = getAccountsSummary();
+  
+  // Calculate previous period for comparison
+  const getPreviousPeriod = (period: string) => {
+    switch (period) {
+      case 'Hoje':
+        return 'Ontem';
+      case '7 dias atrás':
+        return 'Semana anterior';
+      case 'Este mês':
+        return 'Mês anterior';
+      case 'Este ano':
+        return 'Ano anterior';
+      default:
+        return 'Período anterior';
+    }
   };
-
-  const data = getDataForPeriod(selectedPeriod);
 
   const getPeriodLabel = (period: string) => {
     const labels = {
@@ -55,7 +45,7 @@ export function SummaryCards({ selectedPeriod }: SummaryCardsProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       <StatsCard
         title={`Saldo ${getPeriodLabel(selectedPeriod)}`}
-        value={data.previousBalance}
+        value={accountsSummary.totalBalance - transactionSummary.balance}
         change={12.5}
         icon={Wallet}
         type="balance"
@@ -64,7 +54,7 @@ export function SummaryCards({ selectedPeriod }: SummaryCardsProps) {
       
       <StatsCard
         title="Saldo Atual"
-        value={data.currentBalance}
+        value={accountsSummary.totalBalance}
         change={8.2}
         icon={DollarSign}
         type="balance"
@@ -75,7 +65,7 @@ export function SummaryCards({ selectedPeriod }: SummaryCardsProps) {
         title={selectedPeriod === "Hoje" ? "Receitas do Dia" : 
                selectedPeriod === "7 dias atrás" ? "Receitas da Semana" :
                selectedPeriod === "Este mês" ? "Receitas do Mês" : "Receitas do Ano"}
-        value={data.income}
+        value={transactionSummary.income}
         change={15.3}
         icon={TrendingUp}
         type="income"
@@ -86,7 +76,7 @@ export function SummaryCards({ selectedPeriod }: SummaryCardsProps) {
         title={selectedPeriod === "Hoje" ? "Despesas do Dia" : 
                selectedPeriod === "7 dias atrás" ? "Despesas da Semana" :
                selectedPeriod === "Este mês" ? "Despesas do Mês" : "Despesas do Ano"}
-        value={data.expenses}
+        value={transactionSummary.expenses}
         change={-3.8}
         icon={TrendingDown}
         type="expense"

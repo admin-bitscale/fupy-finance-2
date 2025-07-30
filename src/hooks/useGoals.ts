@@ -12,6 +12,7 @@ export interface Goal {
   target_amount: number;
   current_amount: number;
   target_date?: string;
+  priority: 'low' | 'medium' | 'high';
   status: 'active' | 'completed' | 'paused';
   created_at: string;
   updated_at: string;
@@ -43,7 +44,7 @@ export const useGoals = () => {
         return;
       }
 
-      setGoals((data || []) as Goal[]);
+      setGoals(data || []);
     } catch (error) {
       console.error('Error fetching goals:', error);
     } finally {
@@ -51,13 +52,13 @@ export const useGoals = () => {
     }
   };
 
-  const createGoal = async (goalData: Omit<Goal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const createGoal = async (goalData: Omit<Goal, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'current_amount' | 'status'>) => {
     if (!user) return { error: 'User not authenticated' };
 
     try {
       const { data, error } = await supabase
         .from('goals')
-        .insert([{ ...goalData, user_id: user.id }])
+        .insert([{ ...goalData, user_id: user.id, current_amount: 0, status: 'active' }])
         .select()
         .single();
 
@@ -151,9 +152,32 @@ export const useGoals = () => {
     const goal = goals.find(g => g.id === id);
     if (!goal) return { error: 'Goal not found' };
 
-    return updateGoal(id, { current_amount: goal.current_amount + amount });
+    const newAmount = goal.current_amount + amount;
+    const status = newAmount >= goal.target_amount ? 'completed' : 'active';
+    
+    return updateGoal(id, { 
+      current_amount: newAmount,
+      status: status
+    });
   };
 
+  const getGoalsSummary = () => {
+    const activeGoals = goals.filter(goal => goal.status === 'active');
+    const completedGoals = goals.filter(goal => goal.status === 'completed');
+    
+    const totalSaved = goals.reduce((sum, goal) => sum + Number(goal.current_amount), 0);
+    const totalTarget = goals.reduce((sum, goal) => sum + Number(goal.target_amount), 0);
+    
+    const averageProgress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+    
+    return {
+      activeCount: activeGoals.length,
+      completedCount: completedGoals.length,
+      totalSaved,
+      totalTarget,
+      averageProgress
+    };
+  };
   useEffect(() => {
     fetchGoals();
   }, [user]);
@@ -165,6 +189,7 @@ export const useGoals = () => {
     updateGoal,
     deleteGoal,
     updateGoalProgress,
+    getGoalsSummary,
     refetch: fetchGoals,
   };
 };

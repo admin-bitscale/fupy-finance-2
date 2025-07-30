@@ -14,12 +14,26 @@ export interface Transaction {
   date: string;
   notes?: string;
   tags?: string[];
+  status: 'completed' | 'pending' | 'cancelled';
   created_at: string;
   updated_at: string;
 }
 
+export interface TransactionWithDetails extends Transaction {
+  account?: {
+    id: string;
+    name: string;
+    type: string;
+  };
+  category?: {
+    id: string;
+    name: string;
+    color: string;
+    icon?: string;
+  };
+}
 export const useTransactions = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -31,7 +45,11 @@ export const useTransactions = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select(`
+          *,
+          account:accounts(id, name, type),
+          category:categories(id, name, color, icon)
+        `)
         .eq('user_id', user.id)
         .order('date', { ascending: false });
 
@@ -44,7 +62,7 @@ export const useTransactions = () => {
         return;
       }
 
-      setTransactions((data || []) as Transaction[]);
+      setTransactions((data || []) as TransactionWithDetails[]);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
@@ -52,13 +70,13 @@ export const useTransactions = () => {
     }
   };
 
-  const createTransaction = async (transactionData: Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const createTransaction = async (transactionData: Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status'>) => {
     if (!user) return { error: 'User not authenticated' };
 
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .insert([{ ...transactionData, user_id: user.id }])
+        .insert([{ ...transactionData, user_id: user.id, status: 'completed' }])
         .select()
         .single();
 
@@ -153,6 +171,12 @@ export const useTransactions = () => {
     let startDate: Date;
 
     switch (period) {
+      case 'Hoje':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case '7 dias atrás':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
       case 'Este mês':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
@@ -175,6 +199,21 @@ export const useTransactions = () => {
     });
   };
 
+  const getTransactionSummary = (period: string = 'Este mês') => {
+    const periodTransactions = getTransactionsByPeriod(period);
+    
+    const income = periodTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const expenses = periodTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const balance = income - expenses;
+    
+    return { income, expenses, balance, count: periodTransactions.length };
+  };
   useEffect(() => {
     fetchTransactions();
   }, [user]);
@@ -186,6 +225,7 @@ export const useTransactions = () => {
     updateTransaction,
     deleteTransaction,
     getTransactionsByPeriod,
+    getTransactionSummary,
     refetch: fetchTransactions,
   };
 };

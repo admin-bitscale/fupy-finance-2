@@ -1,4 +1,3 @@
-
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -11,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Target, DollarSign } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { useGoals } from "@/hooks/useGoals"
 
 interface GoalModalProps {
   children: React.ReactNode
@@ -20,12 +20,14 @@ interface GoalModalProps {
 
 export function GoalModal({ children, mode = "create", goal }: GoalModalProps) {
   const [open, setOpen] = useState(false)
+  const { createGoal, updateGoal } = useGoals()
+  
   const [formData, setFormData] = useState({
-    title: goal?.title || "",
+    name: goal?.name || "",
     description: goal?.description || "",
-    targetAmount: goal?.targetAmount || "",
+    target_amount: goal?.target_amount || "",
     category: goal?.category || "",
-    deadline: goal?.deadline ? new Date(goal.deadline) : new Date(),
+    target_date: goal?.target_date ? new Date(goal.target_date) : undefined,
     priority: goal?.priority || "medium"
   })
 
@@ -45,15 +47,48 @@ export function GoalModal({ children, mode = "create", goal }: GoalModalProps) {
     { value: "high", label: "Alta" }
   ]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Salvando meta:", formData)
-    setOpen(false)
+    
+    if (!formData.name || !formData.target_amount || !formData.category) {
+      return
+    }
+
+    const goalData = {
+      name: formData.name,
+      description: formData.description || null,
+      category: formData.category,
+      target_amount: parseFloat(formData.target_amount.replace(',', '.')),
+      target_date: formData.target_date ? format(formData.target_date, 'yyyy-MM-dd') : null,
+      priority: formData.priority as 'low' | 'medium' | 'high'
+    }
+
+    let result
+    if (mode === "create") {
+      result = await createGoal(goalData)
+    } else {
+      result = await updateGoal(goal.id, goalData)
+    }
+
+    if (!result.error) {
+      setOpen(false)
+      // Reset form for create mode
+      if (mode === "create") {
+        setFormData({
+          name: "",
+          description: "",
+          target_amount: "",
+          category: "",
+          target_date: undefined,
+          priority: "medium"
+        })
+      }
+    }
   }
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^\d,]/g, '')
-    setFormData(prev => ({ ...prev, targetAmount: value }))
+    const value = e.target.value.replace(/[^\d,\.]/g, '')
+    setFormData(prev => ({ ...prev, target_amount: value }))
   }
 
   return (
@@ -72,12 +107,12 @@ export function GoalModal({ children, mode = "create", goal }: GoalModalProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Título */}
           <div className="space-y-2">
-            <Label htmlFor="title">Título da Meta</Label>
+            <Label htmlFor="name">Título da Meta</Label>
             <Input
-              id="title"
+              id="name"
               placeholder="Ex: Reserva de Emergência, Viagem..."
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               required
             />
           </div>
@@ -97,13 +132,13 @@ export function GoalModal({ children, mode = "create", goal }: GoalModalProps) {
           {/* Valor e Categoria */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="targetAmount">Valor da Meta</Label>
+              <Label htmlFor="target_amount">Valor da Meta</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="targetAmount"
+                  id="target_amount"
                   placeholder="0,00"
-                  value={formData.targetAmount}
+                  value={formData.target_amount}
                   onChange={handleAmountChange}
                   className="pl-10"
                   required
@@ -138,18 +173,18 @@ export function GoalModal({ children, mode = "create", goal }: GoalModalProps) {
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      !formData.deadline && "text-muted-foreground"
+                      !formData.target_date && "text-muted-foreground"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.deadline ? format(formData.deadline, "dd/MM/yyyy") : "Selecione"}
+                    {formData.target_date ? format(formData.target_date, "dd/MM/yyyy") : "Selecione"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={formData.deadline}
-                    onSelect={(date) => setFormData(prev => ({ ...prev, deadline: date || new Date() }))}
+                    selected={formData.target_date}
+                    onSelect={(date) => setFormData(prev => ({ ...prev, target_date: date }))}
                     initialFocus
                   />
                 </PopoverContent>

@@ -17,14 +17,21 @@ export function ProfileDropdown() {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
 
+  // Mock user data - in a real app, this would come from your user profile table
+  const userData = {
+    name: user?.email?.split('@')[0] || 'Usuário',
+    avatar: undefined, // You can add avatar URL here when implementing user profiles
+    email: user?.email || ''
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user.avatar} alt={user.name} />
+            <AvatarImage src={userData.avatar} alt={userData.name} />
             <AvatarFallback>
-              {user.name.split(' ').map(n => n[0]).join('')}
+              {userData.name.split(' ').map(n => n[0]).join('').toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -37,9 +44,9 @@ export function ProfileDropdown() {
       >
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Usuário</p>
+            <p className="text-sm font-medium leading-none">{userData.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {user?.email}
+              {userData.email}
             </p>
           </div>
         </DropdownMenuLabel>

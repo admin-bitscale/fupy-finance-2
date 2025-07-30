@@ -8,67 +8,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { GoalModal } from "@/components/modals/goal-modal"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
+import { useGoals } from "@/hooks/useGoals"
 
-interface Goal {
-  id: string
-  title: string
-  description: string
-  targetAmount: number
-  currentAmount: number
-  deadline: string
-  category: string
-  priority: "low" | "medium" | "high"
-  status: "active" | "completed" | "paused"
-}
-
-const goals: Goal[] = [
-  {
-    id: "1",
-    title: "Emergência",
-    description: "Reserva de emergência para 6 meses",
-    targetAmount: 30000,
-    currentAmount: 18500,
-    deadline: "2024-12-31",
-    category: "Reserva",
-    priority: "high",
-    status: "active"
-  },
-  {
-    id: "2", 
-    title: "Viagem Europa",
-    description: "Economizar para viagem de 15 dias",
-    targetAmount: 15000,
-    currentAmount: 8200,
-    deadline: "2024-08-15",
-    category: "Lazer",
-    priority: "medium",
-    status: "active"
-  },
-  {
-    id: "3",
-    title: "Carro Novo",
-    description: "Entrada para financiamento do carro",
-    targetAmount: 25000,
-    currentAmount: 12000,
-    deadline: "2024-10-01",
-    category: "Transporte",
-    priority: "medium",
-    status: "active"
-  },
-  {
-    id: "4",
-    title: "Curso de Inglês",
-    description: "Investimento em educação",
-    targetAmount: 3000,
-    currentAmount: 3000,
-    deadline: "2024-06-01",
-    category: "Educação",
-    priority: "low",
-    status: "completed"
-  }
-]
 
 export default function Goals() {
+  const { goals, loading, deleteGoal, getGoalsSummary } = useGoals()
+  const summary = getGoalsSummary()
+  
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high": return "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/30 border-red-200 dark:border-red-800/50"
@@ -105,10 +51,29 @@ export default function Goals() {
     }
   }
 
-  const handleGoalAction = (goalId: string, action: string) => {
-    console.log(`Ação ${action} na meta ${goalId}`)
+  const handleGoalAction = async (goalId: string, action: string) => {
+    if (action === "delete") {
+      await deleteGoal(goalId)
+    } else {
+      console.log(`Ação ${action} na meta ${goalId}`)
+    }
   }
 
+  if (loading) {
+    return (
+      <motion.div 
+        className="space-y-4 sm:space-y-6 min-h-screen pb-4 sm:pb-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground mt-2">Carregando metas...</p>
+        </div>
+      </motion.div>
+    )
+  }
   return (
     <motion.div 
       className="space-y-4 sm:space-y-6 min-h-screen pb-4 sm:pb-6"
@@ -163,7 +128,7 @@ export default function Goals() {
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-3xl font-bold text-success">3</div>
+            <div className="text-3xl font-bold text-success">{summary.activeCount}</div>
             <p className="text-xs text-muted-foreground mt-1">Em andamento</p>
           </CardContent>
         </Card>
@@ -177,7 +142,7 @@ export default function Goals() {
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-3xl font-bold text-primary">66%</div>
+            <div className="text-3xl font-bold text-primary">{summary.averageProgress.toFixed(0)}%</div>
             <p className="text-xs text-muted-foreground mt-1">Média geral</p>
           </CardContent>
         </Card>
@@ -191,8 +156,12 @@ export default function Goals() {
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-3xl font-bold text-blue-600">R$ 41.700</div>
-            <p className="text-xs text-muted-foreground mt-1">De R$ 73.000 total</p>
+            <div className="text-3xl font-bold text-blue-600">
+              R$ {summary.totalSaved.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              De R$ {summary.totalTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} total
+            </p>
           </CardContent>
         </Card>
       </motion.div>
@@ -204,106 +173,128 @@ export default function Goals() {
         transition={{ duration: 0.5, delay: 0.4 }}
         className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6"
       >
-        {goals.map((goal, index) => {
-          const progress = (goal.currentAmount / goal.targetAmount) * 100
-          const daysLeft = Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        {goals.length === 0 ? (
+          <div className="col-span-full text-center py-12">
+            <Target className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+            <h3 className="text-lg font-semibold mb-2">Nenhuma meta encontrada</h3>
+            <p className="text-muted-foreground mb-4">Crie sua primeira meta financeira para começar</p>
+            <GoalModal>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Criar primeira meta
+              </Button>
+            </GoalModal>
+          </div>
+        ) : (
+          goals.map((goal, index) => {
+            const progress = (goal.current_amount / goal.target_amount) * 100
+            const daysLeft = goal.target_date 
+              ? Math.ceil((new Date(goal.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+              : null
           
-          return (
-            <motion.div
-              key={goal.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 * index }}
-            >
-              <Card className="relative overflow-hidden bg-gradient-to-br from-background/95 to-background/90 backdrop-blur-xl border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 group">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            return (
+              <motion.div
+                key={goal.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 * index }}
+              >
+                <Card className="relative overflow-hidden bg-gradient-to-br from-background/95 to-background/90 backdrop-blur-xl border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
-                <CardHeader className="relative pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <CardTitle className="text-lg font-semibold">{goal.title}</CardTitle>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{goal.description}</p>
+                  <CardHeader className="relative pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 flex-1">
+                        <CardTitle className="text-lg font-semibold">{goal.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{goal.description}</p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent/50">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <GoalModal mode="edit" goal={goal}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-2">
+                              <Edit className="h-4 w-4" />
+                              Editar Meta
+                            </DropdownMenuItem>
+                          </GoalModal>
+                          <DropdownMenuItem onClick={() => handleGoalAction(goal.id, "add-value")} className="gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            Adicionar Valor
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleGoalAction(goal.id, "delete")} 
+                            className="gap-2 text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Excluir Meta
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent/50">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => handleGoalAction(goal.id, "edit")} className="gap-2">
-                          <Edit className="h-4 w-4" />
-                          Editar Meta
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleGoalAction(goal.id, "add-value")} className="gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          Adicionar Valor
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleGoalAction(goal.id, "delete")} 
-                          className="gap-2 text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Excluir Meta
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
                   
-                  <div className="flex items-center gap-2 pt-3 flex-wrap">
-                    <Badge className={cn("text-xs font-medium border", getPriorityColor(goal.priority))}>
-                      {getPriorityText(goal.priority)}
-                    </Badge>
-                    <Badge className={cn("text-xs font-medium border", getStatusColor(goal.status))}>
-                      {getStatusText(goal.status)}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs font-medium border-border/60">
-                      {goal.category}
-                    </Badge>
-                  </div>
-                </CardHeader>
+                    <div className="flex items-center gap-2 pt-3 flex-wrap">
+                      <Badge className={cn("text-xs font-medium border", getPriorityColor(goal.priority))}>
+                        {getPriorityText(goal.priority)}
+                      </Badge>
+                      <Badge className={cn("text-xs font-medium border", getStatusColor(goal.status))}>
+                        {getStatusText(goal.status)}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs font-medium border-border/60">
+                        {goal.category}
+                      </Badge>
+                    </div>
+                  </CardHeader>
                 
-                <CardContent className="relative space-y-5">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progresso</span>
-                      <span className="font-semibold">{progress.toFixed(1)}%</span>
+                  <CardContent className="relative space-y-5">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Progresso</span>
+                        <span className="font-semibold">{progress.toFixed(1)}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
                     </div>
-                    <Progress value={progress} className="h-2" />
-                  </div>
                   
-                  <div className="flex justify-between items-center text-sm bg-muted/30 p-3 rounded-lg">
-                    <div>
-                      <span className="text-muted-foreground">Atual: </span>
-                      <span className="font-semibold">
-                        R$ {goal.currentAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
+                    <div className="flex justify-between items-center text-sm bg-muted/30 p-3 rounded-lg">
+                      <div>
+                        <span className="text-muted-foreground">Atual: </span>
+                        <span className="font-semibold">
+                          R$ {Number(goal.current_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Meta: </span>
+                        <span className="font-semibold">
+                          R$ {Number(goal.target_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Meta: </span>
-                      <span className="font-semibold">
-                        R$ {goal.targetAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
                   
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg">
-                    <Calendar className="h-4 w-4 flex-shrink-0" />
-                    <span>
-                      {goal.status === "completed" 
-                        ? `Concluído em ${new Date(goal.deadline).toLocaleDateString('pt-BR')}`
-                        : daysLeft > 0 
-                          ? `${daysLeft} dias restantes`
-                          : "Prazo vencido"
-                      }
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )
-        })}
+                    {goal.target_date && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg">
+                        <Calendar className="h-4 w-4 flex-shrink-0" />
+                        <span>
+                          {goal.status === "completed" 
+                            ? `Concluído em ${new Date(goal.target_date).toLocaleDateString('pt-BR')}`
+                            : daysLeft !== null && daysLeft > 0 
+                              ? `${daysLeft} dias restantes`
+                              : daysLeft !== null && daysLeft <= 0
+                                ? "Prazo vencido"
+                                : "Sem prazo definido"
+                          }
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )
+          })
+        )}
       </motion.div>
     </motion.div>
   )

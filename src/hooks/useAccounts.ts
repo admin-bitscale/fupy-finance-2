@@ -7,9 +7,13 @@ export interface Account {
   id: string;
   user_id: string;
   name: string;
-  type: string;
+  type: 'checking' | 'savings' | 'credit' | 'investment';
   balance: number;
   currency: string;
+  bank?: string;
+  account_number?: string;
+  is_active: boolean;
+  color: string;
   created_at: string;
   updated_at: string;
 }
@@ -48,13 +52,13 @@ export const useAccounts = () => {
     }
   };
 
-  const createAccount = async (accountData: Omit<Account, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const createAccount = async (accountData: Omit<Account, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'is_active'>) => {
     if (!user) return { error: 'User not authenticated' };
 
     try {
       const { data, error } = await supabase
         .from('accounts')
-        .insert([{ ...accountData, user_id: user.id }])
+        .insert([{ ...accountData, user_id: user.id, is_active: true }])
         .select()
         .single();
 
@@ -144,6 +148,24 @@ export const useAccounts = () => {
     }
   };
 
+  const getAccountsSummary = () => {
+    const activeAccounts = accounts.filter(account => account.is_active);
+    
+    const totalBalance = activeAccounts
+      .filter(account => account.type !== 'credit')
+      .reduce((sum, account) => sum + Number(account.balance), 0);
+    
+    const totalDebt = Math.abs(activeAccounts
+      .filter(account => account.type === 'credit')
+      .reduce((sum, account) => sum + Number(account.balance), 0));
+    
+    return {
+      totalBalance,
+      totalDebt,
+      activeCount: activeAccounts.length,
+      totalCount: accounts.length
+    };
+  };
   useEffect(() => {
     fetchAccounts();
   }, [user]);
@@ -154,6 +176,7 @@ export const useAccounts = () => {
     createAccount,
     updateAccount,
     deleteAccount,
+    getAccountsSummary,
     refetch: fetchAccounts,
   };
 };
